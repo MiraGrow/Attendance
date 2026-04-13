@@ -2,77 +2,61 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>출석부 웹앱</title>
+  <title>출석부 실습</title>
+  <!-- Supabase JS SDK 불러오기 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <h1>출석 체크</h1>
-  
-  <!-- 입력 폼 -->
-  <form id="attendanceForm">
-    이름: <input type="text" id="name" required>
-    <select id="status">
-      <option value="출석">출석</option>
-      <option value="지각">지각</option>
-      <option value="결석">결석</option>
-    </select>
-    <button type="submit">기록하기</button>
-  </form>
-  
-  <h2>출석부 목록</h2>
-  <table border="1" id="attendanceTable">
-    <thead>
-      <tr>
-        <th>날짜</th>
-        <th>이름</th>
-        <th>출석여부</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+  <h1>출석부</h1>
 
+  <!-- 버튼 -->
+  <button onclick="addRecord('홍길동','출석')">홍길동 출석 기록</button>
+  <button onclick="loadAttendance()">출석부 조회</button>
+
+  <!-- 조회 결과 표시 -->
+  <ul id="attendanceList"></ul>
+
+  <!-- Supabase 연결 및 함수 -->
   <script>
-    // 본인의 웹앱 URL로 교체하세요
-    const url = "https://script.google.com/macros/s/AKfycbzbSGQDI3-lNa5gAFSCqZMqp6eLf119McIrHaIHOSq2htZI6oo54ywOMf-JeVtEa8pvxw/exec";
-    
+    const supabaseUrl = "https://xlfzcgpgctxjfvorzcvd.supabase.co";   // Supabase 프로젝트 URL
+    const supabaseKey = "sb_publishable_feppVDg0bRY-Rf9NsaeS9w_u18tS5sF";      // anon public key
+    const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
     // 출석 기록 추가
-    document.getElementById("attendanceForm").addEventListener("submit", function(e) {
-      e.preventDefault();
-      const name = document.getElementById("name").value;
-      const status = document.getElementById("status").value;
+    async function addRecord(name, status) {
+      const { data, error } = await supabase
+        .from('attendance')
+        .insert([
+          { date: new Date().toISOString().split('T')[0], name, status }
+        ]);
 
-      fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, status })
-      })
-      .then(res => res.text())
-      .then(msg => {
-        alert(msg);   // "출석 기록 완료" 메시지 확인
-        loadAttendance(); // 기록 후 목록 갱신
-      })
-      .catch(err => console.error("에러:", err));
-    });
-
-    // 출석부 조회
-    function loadAttendance() {
-      fetch(url)
-        .then(res => res.json())
-        .then(data => {
-          const tbody = document.querySelector("#attendanceTable tbody");
-          tbody.innerHTML = "";
-          data.forEach((row, index) => {
-            if(index === 0) return; // 헤더 행 제외
-            const tr = document.createElement("tr");
-            tr.innerHTML = `<td>${row[0]}</td><td>${row[1]}</td><td>${row[2]}</td>`;
-            tbody.appendChild(tr);
-          });
-        })
-        .catch(err => console.error("조회 에러:", err));
+      if (error) {
+        console.error("저장 에러:", error);
+      } else {
+        console.log("저장 성공:", data);
+      }
     }
 
-    // 페이지 로드 시 출석부 불러오기
-    loadAttendance();
+    // 출석부 조회
+    async function loadAttendance() {
+      const { data, error } = await supabase
+        .from('attendance')
+        .select('*')
+        .order('id', { ascending: true });
+
+      if (error) {
+        console.error("조회 에러:", error);
+      } else {
+        console.log("출석부:", data);
+        const list = document.getElementById("attendanceList");
+        list.innerHTML = "";
+        data.forEach(record => {
+          const li = document.createElement("li");
+          li.textContent = `${record.date} | ${record.name} | ${record.status}`;
+          list.appendChild(li);
+        });
+      }
+    }
   </script>
 </body>
 </html>
